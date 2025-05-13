@@ -7,6 +7,7 @@ from std_msgs.msg import String
 
 # Import all designator action types
 from knowrob_designator.msg import (
+    PushObjectDesignatorAction, PushObjectDesignatorResult, PushObjectDesignatorFeedback,
     DesignatorInitAction, DesignatorInitResult, DesignatorInitFeedback,
     DesignatorResolutionStartAction, DesignatorResolutionStartResult, DesignatorResolutionStartFeedback,
     DesignatorResolutionFinishedAction, DesignatorResolutionFinishedResult, DesignatorResolutionFinishedFeedback,
@@ -22,6 +23,12 @@ class DesignatorLoggerServer:
         rospy.init_node('designator_logger_server')
 
         # Start an action server for each action type
+        self.push_object_server = actionlib.SimpleActionServer(
+            '/knowrob/designator/push_object_designator',
+            PushObjectDesignatorAction,
+            execute_cb=self.handle_push_object_designator,
+            auto_start=False
+        )
         self.init_server = actionlib.SimpleActionServer(
             '/knowrob/designator/init',
             DesignatorInitAction,
@@ -61,6 +68,7 @@ class DesignatorLoggerServer:
         self.parser = DesignatorParser()     
 
         # Start all servers
+        self.push_object_server.start()
         self.init_server.start()
         self.resolve_start_server.start()
         self.resolve_finished_server.start()
@@ -68,6 +76,12 @@ class DesignatorLoggerServer:
         self.exec_finished_server.start()
 
         rospy.loginfo("DesignatorLoggerServer: all servers started.")
+        
+    def handle_push_object_designator(self, goal):
+        rospy.loginfo(f"Push Object Designator")
+        rospy.logdebug(f"Full JSON:\n{goal.json_designator}")
+        result = PushObjectDesignatorResult(success=True, message="Designator pushed.")
+        self.push_object_server.set_succeeded(result)
 
     def handle_init(self, goal):
         rospy.loginfo(f"Init Designator: {goal.designator_id}")

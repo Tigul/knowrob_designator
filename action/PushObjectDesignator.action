@@ -1,7 +1,6 @@
 # Add or modify and object
 string json_designator
-time start
-time end
+time stamp
 ---
 bool success
 string message

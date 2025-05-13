@@ -16,6 +16,7 @@ catkin_python_setup()
 add_action_files(
   DIRECTORY action
   FILES
+    PushObjectDesignator.action
     DesignatorInit.action
     DesignatorResolutionStart.action
     DesignatorResolutionFinished.action

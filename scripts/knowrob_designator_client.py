@@ -7,6 +7,7 @@ import actionlib
 import uuid
 from time import sleep
 from knowrob_designator.msg import (
+    PushObjectDesignatorAction, PushObjectDesignatorGoal,
     DesignatorInitAction, DesignatorInitGoal,
     DesignatorResolutionStartAction, DesignatorResolutionStartGoal,
     DesignatorResolutionFinishedAction, DesignatorResolutionFinishedGoal,
@@ -25,7 +26,33 @@ def send_action(client, goal, label):
 
 def main():
     rospy.init_node('knowrob_designator_full_test_client')
-
+    
+    ##########################################################
+    ############### Object Designators ########################
+        
+    # 0. PushObjectDesignator
+    push_client = actionlib.SimpleActionClient('/knowrob/designator/push_object_designator', PushObjectDesignatorAction)
+    push_goal = PushObjectDesignatorGoal()
+    push_goal.json_designator = """
+    {
+      "anObject": {
+        "type": "Milk"
+        "pose": {
+          "x": 1.0, 
+          "y": 0.5,
+          "z": 0.75,
+          "frame": "map"
+        }
+      }
+    }
+    """
+    push_goal.stamp = rospy.Time.now()
+    send_action(push_client, push_goal, "PushObjectDesignator")
+    
+    ##########################################################
+    ############### Action Designators ########################
+    
+    # Create a designator ID and JSON designator
     json_designator = """
     {
       "anAction": {
@@ -47,7 +74,6 @@ def main():
       }
     }
     """
-
     designator_id = f"desig_{uuid.uuid4()}"
     resolved_id = f"desig_{uuid.uuid4()}"
     now = rospy.Time.now()
