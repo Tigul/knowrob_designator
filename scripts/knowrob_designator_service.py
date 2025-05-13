@@ -35,7 +35,7 @@ class DesignatorLoggerServer:
             auto_start=False
         )
         self.resolve_finished_server = actionlib.SimpleActionServer(
-            'knowrob/designator_resolving_finished',
+            'knowrob/designator/resolving_finished',
             DesignatorResolutionFinishedAction,
             execute_cb=self.handle_resolve_finished,
             auto_start=False
@@ -72,7 +72,7 @@ class DesignatorLoggerServer:
     def handle_init(self, goal):
         rospy.loginfo(f"Init Designator: {goal.designator_id}")
         rospy.logdebug(f"Full JSON:\n{goal.json_designator}")
-        result = DesignatorInitResult(success=True, message="Designator init logged.", status="done")
+        result = DesignatorInitResult(success=True, message="Designator init logged.")
         self.init_server.set_succeeded(result)
 
     def handle_resolve_start(self, goal):
@@ -117,17 +117,17 @@ class DesignatorLoggerServer:
     
     def handle_resolve_finished(self, goal):
         rospy.loginfo(f"Finished Resolving Designator: {goal.designator_id} from {goal.resolved_from_id}")
-        result = DesignatorResolutionFinishedResult(success=True, message="Resolution finished logged.", status="done")
+        result = DesignatorResolutionFinishedResult(success=True, message="Resolution finished logged.")
         self.resolve_finished_server.set_succeeded(result)
 
     def handle_exec_start(self, goal):
         rospy.loginfo(f"Execution Started: {goal.designator_id}")
-        result = DesignatorExecutionStartResult(success=True, message="Execution started logged.", status="done")
+        result = DesignatorExecutionStartResult(success=True, message="Execution started logged.")
         self.exec_start_server.set_succeeded(result)
 
     def handle_exec_finished(self, goal):
         rospy.loginfo(f"Execution Finished: {goal.designator_id}")
-        result = DesignatorExecutionFinishedResult(success=True, message="Execution finished logged.", status="done")
+        result = DesignatorExecutionFinishedResult(success=True, message="Execution finished logged.")
         self.exec_finished_server.set_succeeded(result)
 
 if __name__ == '__main__':
