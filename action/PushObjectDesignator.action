@@ -1,8 +1,0 @@
-# Add or modify and object
-string json_designator
-time stamp
----
-bool success
-string message
----
-string status
