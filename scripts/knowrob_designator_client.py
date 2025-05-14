@@ -21,7 +21,7 @@ def testQueryDesig():
     know = KnowRobRosLib()
     know.init_clients()  # After rospy.init_node()
     
-    query = "triple(?d, rdf:type, soma:PyCramDesignator)"
+    query = "triple(?d, rdf:type, soma:PyCramActionDesignator)"
     rospy.loginfo(f"asking [{query}] ...")
     result = know.ask_one(query, get_default_modalframe())
     rospy.loginfo(f"response: [{result}]")
@@ -101,22 +101,21 @@ def main():
           }
         },
         "target_location": {
-          'px': 2.1, 
-          'py': 2.35, 
-          'pz': 0.8, 
-          'rx': 0.0, 
-          'ry': 0.0, 
-          'rz': 0.0, 
-          'rw': 1.0, 
-          'frame': 'map'
-          }
+          "px": 2.1, 
+          "py": 2.35, 
+          "pz": 0.8, 
+          "rx": 0.0, 
+          "ry": 0.0, 
+          "rz": 0.0, 
+          "rw": 1.0, 
+          "frame": "map"
         }
       }
     }
     """
 
-    designator_id = f"desig_{uuid.uuid4()}"
-    resolved_id = f"desig_{uuid.uuid4()}"
+    designator_id = "desig_start_1234"
+    resolved_id = "desig_resolved_5678"
 
     init_msg = DesignatorInit()
     init_msg.stamp = now

@@ -26,8 +26,8 @@ class DesignatorParser:
     
     # Map CRAM action types to SOMA action types
     action_type_map = {
-            "Transporting": "SOMA:Transporting",
-            "Manipulating": "SOMA:Manipulating",
+            "Transporting": "http://www.ease-crc.org/ont/SOMA.owl#Transporting",
+            "Manipulating": "http://www.ease-crc.org/ont/SOMA.owl#Manipulating",
             # Add more mappings as needed
      }
     
@@ -41,7 +41,7 @@ class DesignatorParser:
         Returns:
             The corresponding SOMA action type (e.g., "SOMA:Transporting")
         """
-        return self.action_type_map.get(cram_action_type, "SOMA:UnknownAction")
+        return self.action_type_map[cram_action_type]
 
     def create_individual(self, class_uri: str, prefix: str = "ind", id: str = None) -> str:
         """
@@ -188,6 +188,7 @@ class DesignatorParser:
 
     def create_designator_resolving(self,
             input_designator_id: str,
+            output_designator_id: str,
             output_designator_type: Literal["Object", "Action", "Motion", "Location"],
             output_description_content: Dict[str, Any],
             output_referent_content: Dict[str, Any]
@@ -207,6 +208,8 @@ class DesignatorParser:
         """
         triples = []
         
+        # Print the map before using it
+        print("Last Designator ID Map:", str(self.last_designator_id))
         # Create the input designator URI
         input_designator_uri = self.last_designator_id[input_designator_id]
 
@@ -223,6 +226,9 @@ class DesignatorParser:
         # Create output designator with description and referent
         output_designator_class = f"SOMA:PyCram{output_designator_type}Designator"
         output_designator_uri = self.create_individual(output_designator_class)
+
+        # Store the designator URI for later use
+        self.last_designator_id[output_designator_id] = output_designator_uri
 
         # Add type triple
         triples.append(self.triple(output_designator_uri, "rdf:type", output_designator_class))
@@ -270,7 +276,7 @@ class DesignatorParser:
             # Store the designator description description URI for later use
             self.designator_uri_to_description_description[output_designator_uri] = plan_uri
             # From the description content, we extract the type of action
-            action_type = output_description_content.get("type")
+            action_type = output_description_content["type"]
             # Map the action type to SOMA
             mapped_action_type = self.map_action_type_from_cram_to_soma(action_type)
             # Create individual for the mapped action type
@@ -311,10 +317,11 @@ class DesignatorParser:
             triples.append(self.triple(referent_desc_uri, "dul:describes", "dul:PhysicalPlace"))
 
         # Add expands relationship
-        triples.append(self.triple(referent_desc_uri, "dul:expands", output_desc_uri))
+        # TODO: Where does referent_desc_uri come from?
+        # triples.append(self.triple(referent_desc_uri, "dul:expands", output_desc_uri))
         # Get designator description description URI
-        input_desc_desc_uri = self.designator_uri_to_description_description[input_description_uri]
-        triples.append(self.triple(referent_desc_uri, "dul:expands", input_desc_desc_uri))
+        # input_desc_desc_uri = self.designator_uri_to_description_description[input_description_uri]
+        # triples.append(self.triple(referent_desc_uri, "dul:expands", input_desc_desc_uri))
         # TODO: If there are multiple resolving tasks, each referent description expands the previous referent description (also for the other designator types)
 
         # Add directlyDerivedFrom relationships
@@ -328,44 +335,98 @@ class DesignatorParser:
         triples.append(self.triple(resolving_uri, "SOMA:isTaskOfOutputRole", conclusion_uri))
 
         return resolving_uri, output_designator_uri, triples
+    
+    def create_event(self,
+            designator_id: str,
+            task_type: str            
+    ) -> Tuple[str, List[Triple]]:
+        """
+        Create an event for the designator
 
+        Args:
+            designator_id: The ID of the designator
+            task_type: The type of task (e.g., "Action", "Motion")
 
-# Example usage:
+        Returns:
+            Tuple containing the event URI and a list of triples
+        """
+        triples = []
+
+        # Create the dul:action and then 
+        event_uri = self.create_individual(f"dul:Action")
+        triples.append(self.triple(event_uri, "rdf:type", f"dul:Action"))
+        # connect it with the task type via dul:executesTask
+        # TODO: For now is just create a new individual
+        # Get task type via map_action_type_from_cram_to_soma
+        task_type = self.map_action_type_from_cram_to_soma(task_type)
+        # Create the task type individual
+        task_type_uri = self.create_individual(task_type)
+        triples.append(self.triple(task_type_uri, "rdf:type", task_type))
+        # Connect the event with the task type
+        triples.append(self.triple(event_uri, "dul:executesTask", task_type_uri))
+        # Connect the event with the designator
+        designator_uri = self.last_designator_id[designator_id]
+        # TODO: Find correct relation
+        triples.append(self.triple(event_uri, "SOMA:hasDesignator", designator_uri))
+        # Return the event URI and triples
+        return event_uri, triples
+        
 if __name__ == "__main__":
-    # Initialize the DesignatorParser
+    import json
+
     parser = DesignatorParser()
-    # Example 1: Create an unresolved object designator
-    obj_desc = {
-        "type": "cup",
-        "color": "blue",
-        "location": "on table"
-    }
-    obj_designator_uri, obj_triples = parser.create_unresolved_designator("Object", obj_desc, id="234234234")
-    print(f"Created unresolved object designator: {obj_designator_uri}")
-    print(f"Generated {len(obj_triples)} triples")
 
-    # Example 2: Create a designator resolving task
-    resolved_desc = {
-        "type": "cup",
-        "color": "blue",
-        "location": "on table",
-        "size": "medium"
+    print("### TESTING create_unresolved_designator ###")
+    action_desig = {
+        "type": "Transporting",
+        "object_designator": {
+            "anObject": {
+                "type": "Milk"
+            }
+        },
+        "target": {
+            "theLocation": {
+                "goal": {
+                    "theObject": {
+                        "name": "Table1"
+                    }
+                }
+            }
+        }
     }
-    resolved_ref = {
-        "id": "cup_1",
-        "position": [0.5, 1.2, 0.8],
-        "orientation": [0, 0, 1, 0]
-    }
+    designator_id = "test_action_1"
+    uri, triples = parser.create_unresolved_designator("Action", action_desig, designator_id)
+    print(f"Designator URI: {uri}")
+    for s, p, o in triples:
+        print(s, p, o)
 
-    resolving_uri, resolved_designator_uri, resolving_triples = parser.create_designator_resolving(
-        obj_designator_uri, "Object", resolved_desc, resolved_ref
+    print("\n### TESTING create_designator_resolving ###")
+    resolved_action = {
+        "type": "Transporting",
+        "object_designator": {
+            "anObject": {
+                "type": "Milk"
+            }
+        },
+        "target_location": {
+            "px": 1.0, "py": 2.0, "pz": 0.0,
+            "frame": "map"
+        }
+    }
+    resolving_uri, output_uri, triples = parser.create_designator_resolving(
+        input_designator_id=designator_id,
+        output_designator_id="test_action_1_resolved",
+        output_designator_type="Action",
+        output_description_content=resolved_action,
+        output_referent_content=None
     )
+    print(f"Resolving URI: {resolving_uri}")
+    print(f"Output Designator URI: {output_uri}")
+    for s, p, o in triples:
+        print(s, p, o)
 
-    print(f"Created resolving task: {resolving_uri}")
-    print(f"Created resolved designator: {resolved_designator_uri}")
-    print(f"Generated {len(resolving_triples)} triples")
-
-    # Print some example triples
-    print("\nSample triples:")
-    for i, t in enumerate(obj_triples[:5]):
-        print(f"{i+1}. {t[0]} {t[1]} {t[2]}")
+    print("\n### TESTING create_event ###")
+    event_uri, triples = parser.create_event(designator_id="test_action_1_resolved", task_type="Transporting")
+    print(f"Event URI: {event_uri}")
+    for s, p, o in triples:
+        print(s, p, o)
