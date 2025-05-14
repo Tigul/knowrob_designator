@@ -5,35 +5,32 @@ project(knowrob_designator)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
-  actionlib
-  actionlib_msgs
   message_generation
 )
 
 catkin_python_setup()
 
-## Declare ROS actions
-add_action_files(
-  DIRECTORY action
+## Declare ROS messages
+add_message_files(
+  DIRECTORY msg
   FILES
-    PushObjectDesignator.action
-    DesignatorInit.action
-    DesignatorResolutionStart.action
-    DesignatorResolutionFinished.action
-    DesignatorExecutionStart.action
-    DesignatorExecutionFinished.action
+    PushObjectDesignator.msg
+    DesignatorInit.msg
+    DesignatorResolutionStart.msg
+    DesignatorResolutionFinished.msg
+    DesignatorExecutionStart.msg
+    DesignatorExecutionFinished.msg
 )
 
-## Generate messages from actions
+## Generate messages
 generate_messages(
   DEPENDENCIES
   std_msgs
-  actionlib_msgs
 )
 
 ## Declare catkin package
 catkin_package(
-  CATKIN_DEPENDS rospy std_msgs actionlib actionlib_msgs message_runtime
+  CATKIN_DEPENDS rospy std_msgs message_runtime
 )
 
 # list all executable python and shell scripts for installation

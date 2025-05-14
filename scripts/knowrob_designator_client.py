@@ -1,42 +1,43 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Full client for all KnowRob designator actions
+# Topic-based client for all KnowRob designator messages
 
 import rospy
-import actionlib
 import uuid
 from time import sleep
+from std_msgs.msg import Header
 from knowrob_designator.msg import (
-    PushObjectDesignatorAction, PushObjectDesignatorGoal,
-    DesignatorInitAction, DesignatorInitGoal,
-    DesignatorResolutionStartAction, DesignatorResolutionStartGoal,
-    DesignatorResolutionFinishedAction, DesignatorResolutionFinishedGoal,
-    DesignatorExecutionStartAction, DesignatorExecutionStartGoal,
-    DesignatorExecutionFinishedAction, DesignatorExecutionFinishedGoal
+    PushObjectDesignator,
+    DesignatorInit,
+    DesignatorResolutionStart,
+    DesignatorResolutionFinished,
+    DesignatorExecutionStart,
+    DesignatorExecutionFinished
 )
 
-def send_action(client, goal, label):
-    rospy.loginfo(f"[{label}] Waiting for action server...")
-    client.wait_for_server()
-    rospy.loginfo(f"[{label}] Sending goal...")
-    client.send_goal(goal)
-    client.wait_for_result()
-    result = client.get_result()
-    rospy.loginfo(f"[{label}] Result: success={result.success}, message='{result.message}''")
-
 def main():
-    rospy.init_node('knowrob_designator_full_test_client')
-    
+    rospy.init_node('knowrob_designator_topic_client')
+    now = rospy.Time.now()
+
+    # Publishers
+    push_pub = rospy.Publisher('/knowrob/designator/push_object_designator', PushObjectDesignator, queue_size=10)
+    init_pub = rospy.Publisher('/knowrob/designator/init', DesignatorInit, queue_size=10)
+    resolve_start_pub = rospy.Publisher('/knowrob/designator/resolving_started', DesignatorResolutionStart, queue_size=10)
+    resolve_finished_pub = rospy.Publisher('/knowrob/designator/resolving_finished', DesignatorResolutionFinished, queue_size=10)
+    exec_start_pub = rospy.Publisher('/knowrob/designator/execution_start', DesignatorExecutionStart, queue_size=10)
+    exec_finished_pub = rospy.Publisher('/knowrob/designator/execution_finished', DesignatorExecutionFinished, queue_size=10)
+
+    rospy.sleep(1.0)  # Wait for publishers to register
+
     ##########################################################
-    ############### Object Designators ########################
-        
-    # 0. PushObjectDesignator
-    push_client = actionlib.SimpleActionClient('/knowrob/designator/push_object_designator', PushObjectDesignatorAction)
-    push_goal = PushObjectDesignatorGoal()
-    push_goal.json_designator = """
+    ############### Object Designator ########################
+
+    push_msg = PushObjectDesignator()
+    push_msg.stamp = now
+    push_msg.json_designator = """
     {
       "anObject": {
-        "type": "Milk"
+        "type": "Milk",
         "pose": {
           "x": 1.0, 
           "y": 0.5,
@@ -46,18 +47,17 @@ def main():
       }
     }
     """
-    push_goal.stamp = rospy.Time.now()
-    send_action(push_client, push_goal, "PushObjectDesignator")
-    
+    rospy.loginfo("Publishing PushObjectDesignator...")
+    push_pub.publish(push_msg)
+
     ##########################################################
     ############### Action Designators ########################
-    
-    # Create a designator ID and JSON designator
+
     json_designator = """
     {
       "anAction": {
         "type": "Transporting",
-        "objectActedOn": {
+        "object_designator": {
           "anObject": {
             "type": "Milk"
           }
@@ -74,35 +74,12 @@ def main():
       }
     }
     """
-    designator_id = f"desig_{uuid.uuid4()}"
-    resolved_id = f"desig_{uuid.uuid4()}"
-    now = rospy.Time.now()
-
-    # 1. DesignatorInit
-    init_client = actionlib.SimpleActionClient('/knowrob/designator/init', DesignatorInitAction)
-    init_goal = DesignatorInitGoal()
-    init_goal.designator_id = designator_id
-    init_goal.parent_id = ""  # root designator
-    init_goal.json_designator = json_designator
-    init_goal.stamp = now
-    send_action(init_client, init_goal, "Init")
-
-    # 2. DesignatorResolvingStarted
-    resolving_client = actionlib.SimpleActionClient('/knowrob/designator/resolving_started', DesignatorResolutionStartAction)
-    resolving_goal = DesignatorResolutionStartGoal()
-    resolving_goal.designator_id = designator_id
-    resolving_goal.json_designator = json_designator
-    resolving_goal.stamp = now
-    send_action(resolving_client, resolving_goal, "ResolveStart")
-
-    # 3. DesignatorResolutionFinished with resolved target
-    resolved_client = actionlib.SimpleActionClient('/knowrob/designator/resolving_finished', DesignatorResolutionFinishedAction)
 
     resolved_designator = """
     {
       "anAction": {
         "type": "Transporting",
-        "objectActedOn": {
+        "object_designator": {
           "anObject": {
             "type": "Milk"
           }
@@ -119,29 +96,47 @@ def main():
     }
     """
 
-    resolved_goal = DesignatorResolutionFinishedGoal()
-    resolved_goal.designator_id = resolved_id
-    resolved_goal.resolved_from_id = designator_id
-    resolved_goal.json_designator = resolved_designator
-    resolved_goal.stamp = rospy.Time.now()
-    send_action(resolved_client, resolved_goal, "ResolveFinished")
+    designator_id = f"desig_{uuid.uuid4()}"
+    resolved_id = f"desig_{uuid.uuid4()}"
 
+    init_msg = DesignatorInit()
+    init_msg.stamp = now
+    init_msg.designator_id = designator_id
+    init_msg.parent_id = ""
+    init_msg.json_designator = json_designator
+    rospy.loginfo("Publishing DesignatorInit...")
+    init_pub.publish(init_msg)
 
-    # 4. DesignatorExecutionStart
-    exec_start_client = actionlib.SimpleActionClient('/knowrob/designator/execution_start', DesignatorExecutionStartAction)
-    exec_start_goal = DesignatorExecutionStartGoal()
-    exec_start_goal.designator_id = resolved_id
-    exec_start_goal.json_designator = resolved_designator
-    exec_start_goal.stamp = now
-    send_action(exec_start_client, exec_start_goal, "ExecutionStart")
+    resolve_start_msg = DesignatorResolutionStart()
+    resolve_start_msg.stamp = now
+    resolve_start_msg.designator_id = designator_id
+    resolve_start_msg.json_designator = json_designator
+    rospy.loginfo("Publishing DesignatorResolutionStart...")
+    resolve_start_pub.publish(resolve_start_msg)
 
-    # 5. DesignatorExecutionFinished
-    exec_finished_client = actionlib.SimpleActionClient('/knowrob/designator/execution_finished', DesignatorExecutionFinishedAction)
-    exec_finished_goal = DesignatorExecutionFinishedGoal()
-    exec_finished_goal.designator_id = resolved_id
-    exec_finished_goal.json_designator = resolved_designator
-    exec_finished_goal.stamp = now
-    send_action(exec_finished_client, exec_finished_goal, "ExecutionFinished")
+    rospy.sleep(1.0)
+
+    resolve_finished_msg = DesignatorResolutionFinished()
+    resolve_finished_msg.stamp = rospy.Time.now()
+    resolve_finished_msg.designator_id = resolved_id
+    resolve_finished_msg.resolved_from_id = designator_id
+    resolve_finished_msg.json_designator = resolved_designator
+    rospy.loginfo("Publishing DesignatorResolutionFinished...")
+    resolve_finished_pub.publish(resolve_finished_msg)
+
+    exec_start_msg = DesignatorExecutionStart()
+    exec_start_msg.stamp = now
+    exec_start_msg.designator_id = resolved_id
+    exec_start_msg.json_designator = resolved_designator
+    rospy.loginfo("Publishing DesignatorExecutionStart...")
+    exec_start_pub.publish(exec_start_msg)
+
+    exec_finished_msg = DesignatorExecutionFinished()
+    exec_finished_msg.stamp = now
+    exec_finished_msg.designator_id = resolved_id
+    exec_finished_msg.json_designator = resolved_designator
+    rospy.loginfo("Publishing DesignatorExecutionFinished...")
+    exec_finished_pub.publish(exec_finished_msg)
 
 if __name__ == '__main__':
     main()

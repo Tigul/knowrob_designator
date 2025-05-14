@@ -7,8 +7,3 @@ string designator_id
 string resolved_from_id
 string json_designator
 time stamp
----
-bool success
-string message
----
-string status
