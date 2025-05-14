@@ -14,6 +14,8 @@ from knowrob_designator.msg import (
     DesignatorExecutionStartAction, DesignatorExecutionStartGoal,
     DesignatorExecutionFinishedAction, DesignatorExecutionFinishedGoal
 )
+from knowrob_ros.knowrob_ros_lib import KnowRobRosLib
+from knowrob_ros.knowrob_ros_lib import get_default_modalframe
 
 def send_action(client, goal, label):
     rospy.loginfo(f"[{label}] Waiting for action server...")
@@ -23,6 +25,15 @@ def send_action(client, goal, label):
     client.wait_for_result()
     result = client.get_result()
     rospy.loginfo(f"[{label}] Result: success={result.success}, message='{result.message}''")
+
+def testQueryDesig():
+    know = KnowRobRosLib()
+    know.init_clients()  # After rospy.init_node()
+    
+    query = "triple(?d, rdf:type, soma:PyCramDesignator)"
+    rospy.loginfo(f"asking [{query}] ...")
+    result = know.ask_one(query, get_default_modalframe())
+    rospy.loginfo(f"response: [{result}]")
 
 def main():
     rospy.init_node('knowrob_designator_full_test_client')
@@ -142,6 +153,9 @@ def main():
     exec_finished_goal.json_designator = resolved_designator
     exec_finished_goal.stamp = now
     send_action(exec_finished_client, exec_finished_goal, "ExecutionFinished")
+    
+    # Finally do some testing queries with KnowRob
+    testQueryDesig()
 
 if __name__ == '__main__':
     main()
