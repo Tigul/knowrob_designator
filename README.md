@@ -12,6 +12,8 @@ The `knowrob_designator` package provides a ROS action interface for logging str
 
 A designator is a nested symbolic description (e.g., of actions, goals, objects) expressed as a JSON structure. This structure is parsed into RDF-style triples and submitted to KnowRob using its `tell` interface.
 
+For a detailed description of the interfaces, see the [Action Interface Description](scripts/README.md)
+
 ---
 
 ## Package Structure
@@ -28,8 +30,8 @@ knowrob_designator/
 ├── README.md                          # You are here
 ├── run_knowrob_designator.sh          # Optional helper script (not required)
 ├── src/
-│   ├── knowrob_designator/            # Source code for the action server
-│   │   ├── knowrob_designator.py      # Main action server implementation
+│   ├── knowrob_designator/            # Library for the action server
+│   │   ├── designator_parser.py         # Parses JSON designators into triples
 │   │   └── __init__.py                  # Python package initialization
 ├── scripts/
 │   ├── designator_parser.py           # Parses JSON designators into triples (no ROS dependency)
