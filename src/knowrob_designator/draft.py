@@ -1,309 +1,346 @@
 import uuid
 from typing import List, Tuple, Optional, Dict, Any, Literal
 
-# Define the prefixes
-PREFIXES = {
-    "SOMA": "<http://www.ease-crc.org/ont/SOMA.owl#>",
-    "dul": "<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#>",
-    "rdf": "<http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-    "owl": "<http://www.w3.org/2002/07/owl#>"
-}
+class DesignatorParser:
+    # Define the prefixes
+    PREFIXES = {
+        "SOMA": "<http://www.ease-crc.org/ont/SOMA.owl#>",
+        "dul": "<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#>",
+        "rdf": "<http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
+        "owl": "<http://www.w3.org/2002/07/owl#>"
+    }
 
-# Triple type for readability
-Triple = Tuple[str, str, str]
+    # Triple type for readability
+    Triple = Tuple[str, str, str]
+    
+    # Map from id to last designator uri
+    last_designator_id = {}
+    # Map from designator uri to designator description uri
+    designator_uri_to_description = {}
+    # Map from designator uri to referent uri
+    designator_uri_to_referent = {}
+    # Map from designator uri to designator description description uri
+    designator_uri_to_description_description = {}
+    # Map from designator uri to task uri
+    designator_uri_to_task = {}
+    
+    # Map CRAM action types to SOMA action types
+    action_type_map = {
+            "Transporting": "SOMA:Transporting",
+            "Manipulating": "SOMA:Manipulating",
+            # Add more mappings as needed
+     }
+    
+    def map_action_type_from_cram_to_soma(self, cram_action_type: str) -> str:
+        """
+        Convert a CRAM action type to a SOMA action type.
 
-def create_individual(class_uri: str, prefix: str = "ind") -> str:
-    """
-    Create a new individual URI based on class name and a UUID
+        Args:
+            cram_action_type: The CRAM action type (e.g., "Transporting")
 
-    Args:
-        class_uri: The URI of the class (e.g., "SOMA:PyCramObjectDesignator")
-        prefix: A prefix for the individual name
+        Returns:
+            The corresponding SOMA action type (e.g., "SOMA:Transporting")
+        """
+        return self.action_type_map.get(cram_action_type, "SOMA:UnknownAction")
 
-    Returns:
-        A URI string for the new individual
-    """
-    # Extract class name from URI (get everything after the last # or :)
-    class_name = class_uri.split('#')[-1] if '#' in class_uri else class_uri.split(':')[-1]
+    def create_individual(class_uri: str, prefix: str = "ind", id: str = None) -> str:
+        """
+        Create a new individual URI based on class name and a UUID
 
-    # Generate UUID
-    individual_id = f"{prefix}_{class_name}_{uuid.uuid4().hex[:8]}"
+        Args:
+            class_uri: The URI of the class (e.g., "SOMA:PyCramObjectDesignator")
+            prefix: A prefix for the individual name
 
-    # Construct URI
-    if ":" in class_uri:
-        prefix, _ = class_uri.split(":", 1)
-        return f"{prefix}:{individual_id}"
-    else:
-        return f"<{individual_id}>"
+        Returns:
+            A URI string for the new individual
+        """
+        # Extract class name from URI (get everything after the last # or :)
+        class_name = class_uri.split('#')[-1] if '#' in class_uri else class_uri.split(':')[-1]
 
-def triple(subject: str, predicate: str, object_: str) -> Triple:
-    """Helper function to format a triple with proper prefix expansion"""
-    for prefix, uri in PREFIXES.items():
-        if subject.startswith(f"{prefix}:"):
-            subject = subject.replace(f"{prefix}:", f"{uri[:-1]}#")
-        if predicate.startswith(f"{prefix}:"):
-            predicate = predicate.replace(f"{prefix}:", f"{uri[:-1]}#")
-        if object_.startswith(f"{prefix}:"):
-            object_ = object_.replace(f"{prefix}:", f"{uri[:-1]}#")
+        # If an ID is provided, use it; otherwise, generate a new UUID
+        if id:
+            individual_id = f"{prefix}_{class_name}_{id}"
+        else:
+            # Generate a new UUID
+            individual_id = f"{prefix}_{class_name}_{uuid.uuid4().hex[:8]}"
 
-    # Add angle brackets if not present and not a literal
-    if not subject.startswith("<") and not subject.startswith('"'):
-        subject = f"<{subject}>"
-    if not predicate.startswith("<") and not predicate.startswith('"'):
-        predicate = f"<{predicate}>"
-    if not object_.startswith("<") and not object_.startswith('"') and not object_.startswith("_"):
-        object_ = f"<{object_}>"
+        # Construct URI
+        if ":" in class_uri:
+            prefix, _ = class_uri.split(":", 1)
+            return f"{prefix}:{individual_id}"
+        else:
+            return f"<{individual_id}>"
 
-    return (subject, predicate, object_)
+    def triple(subject: str, predicate: str, object_: str) -> Triple:
+        """Helper function to format a triple with proper prefix expansion"""
+        for prefix, uri in PREFIXES.items():
+            if subject.startswith(f"{prefix}:"):
+                subject = subject.replace(f"{prefix}:", f"{uri[:-1]}#")
+            if predicate.startswith(f"{prefix}:"):
+                predicate = predicate.replace(f"{prefix}:", f"{uri[:-1]}#")
+            if object_.startswith(f"{prefix}:"):
+                object_ = object_.replace(f"{prefix}:", f"{uri[:-1]}#")
 
-def create_unresolved_designator(
-        designator_type: Literal["Object", "Action", "Motion", "Location"],
-        description_content: Dict[str, Any]
-) -> Tuple[str, List[Triple]]:
-    """
-    Create an unresolved PyCram designator with all necessary parts
+        # Add angle brackets if not present and not a literal
+        if not subject.startswith("<") and not subject.startswith('"'):
+            subject = f"<{subject}>"
+        if not predicate.startswith("<") and not predicate.startswith('"'):
+            predicate = f"<{predicate}>"
+        if not object_.startswith("<") and not object_.startswith('"') and not object_.startswith("_"):
+            object_ = f"<{object_}>"
 
-    Args:
-        designator_type: Type of designator ("Object", "Action", "Motion", "Location")
-        description_content: Key-value pairs for the designator description
+        return (subject, predicate, object_)
 
-    Returns:
-        Tuple containing the designator URI and a list of triples
-    """
-    triples = []
+    def create_unresolved_designator(this,
+            designator_type: Literal["Object", "Action", "Motion", "Location"],
+            description_content: Dict[str, Any],
+            id: str
+    ) -> Tuple[str, List[Triple]]:
+        """
+        Create an unresolved PyCram designator with all necessary parts
 
-    # Create the designator
-    designator_class = f"SOMA:PyCram{designator_type}Designator"
-    designator_uri = create_individual(designator_class)
+        Args:
+            designator_type: Type of designator ("Object", "Action", "Motion", "Location")
+            description_content: Key-value pairs for the designator description
 
-    # Add type triple
-    triples.append(triple(designator_uri, "rdf:type", designator_class))
+        Returns:
+            Tuple containing the designator URI and a list of triples
+        """
+        triples = []
 
-    # Create and link the description
-    description_class = f"SOMA:PyCram{designator_type}DesignatorDescription"
-    designator_description_uri = create_individual(description_class)
+        # Create the designator
+        designator_class = f"SOMA:PyCram{designator_type}Designator"
+        designator_uri = this.create_individual(designator_class)
+        
+        # Store the designator URI for later use
+        this.last_designator_id[id] = designator_uri
 
-    # Add type triple for description
-    triples.append(triple(designator_description_uri, "rdf:type", description_class))
+        # Add type triple
+        triples.append(this.triple(designator_uri, "rdf:type", designator_class))
+        
+        # Add ID triple with soma:hasNameString
+        # TODO: Check if this is the correct string syntax. 
+        triples.append(this.triple(designator_uri, "SOMA:hasNameString", id))
 
-    # Link designator to description
-    triples.append(triple(designator_uri, "dul:hasProperPart", designator_description_uri))
+        # Create and link the description
+        description_class = f"SOMA:PyCram{designator_type}DesignatorDescription"
+        designator_description_uri = this.create_individual(description_class)
+        
+        # Store the designator description URI for later use
+        this.designator_uri_description[designator_uri] = designator_description_uri
 
-    # For each key-value pair in the description content, add appropriate triples
-    # This will depend on the designator type and expected structure
-    # Here's a simplified approach:
+        # Add type triple for description
+        triples.append(this.triple(designator_description_uri, "rdf:type", description_class))
 
-    # First, handle what the description expresses based on designator type
-    if designator_type == "Object":
-        # Create a Description that describes a PhysicalArtifact
-        desc_uri = create_individual("dul:Description")
-        triples.append(triple(desc_uri, "rdf:type", "dul:Description"))
-        triples.append(triple(designator_description_uri, "dul:expresses", desc_uri))
-        # TODO: Add more specific properties based on description_content
-        # triples.append(triple(desc_uri, "dul:describes", TODO))
+        # Link designator to description
+        triples.append(this.triple(designator_uri, "dul:hasProperPart", designator_description_uri))
 
-    elif designator_type == "Action":
-        # Create a Method
-        method_uri = create_individual("dul:Method")
-        triples.append(triple(method_uri, "rdf:type", "dul:Method"))
-        triples.append(triple(designator_description_uri, "dul:expresses", method_uri))
-        # TODO: Add more specific properties based on description_content
-        # triples.append(triple(method_uri, "dul:describes", TODO))
+        # For each key-value pair in the description content, add appropriate triples
+        # This will depend on the designator type and expected structure
+        # Here's a simplified approach:
 
-    elif designator_type == "Motion":
-        # Create a MotionDescription
-        motion_desc_uri = create_individual("SOMA:MotionDescription")
-        triples.append(triple(motion_desc_uri, "rdf:type", "SOMA:MotionDescription"))
-        triples.append(triple(designator_description_uri, "dul:expresses", motion_desc_uri))
-        # TODO: Add more specific properties based on description_content
-        # triples.append(triple(motion_desc_uri, "dul:describes", TODO))
+        # First, handle what the description expresses based on designator type
+        if designator_type == "Object":
+            # Create a Description that describes a PhysicalArtifact
+            desc_uri = this.create_individual("dul:Description")
+            triples.append(this.triple(desc_uri, "rdf:type", "dul:Description"))
+            triples.append(this.triple(designator_description_uri, "dul:expresses", desc_uri))
+            # TODO: Add more specific properties based on description_content
+            # triples.append(triple(desc_uri, "dul:describes", TODO))
 
-    elif designator_type == "Location":
-        # Create a Description that describes a PhysicalPlace
-        desc_uri = create_individual("dul:Description")
-        triples.append(triple(desc_uri, "rdf:type", "dul:Description"))
-        triples.append(triple(designator_description_uri, "dul:expresses", desc_uri))
-        # TODO: Add more specific properties based on description_content
-        # triples.append(triple(desc_uri, "dul:describes", TODO))
+        elif designator_type == "Action":
+            # Create a Method
+            method_uri = this.create_individual("dul:Method")
+            triples.append(this.triple(method_uri, "rdf:type", "dul:Method"))
+            triples.append(this.triple(designator_description_uri, "dul:expresses", method_uri))
+            # Store the designator description description URI for later use
+            this.designator_uri_to_description_description[designator_description_uri] = method_uri
+            # From the description content, we extract the type of action
+            action_type = description_content.get("type")
+            # Map the action type to SOMA
+            mapped_action_type = this.map_action_type_from_cram_to_soma(action_type)
+            # Create individual for the mapped action type
+            mapped_action_type_uri = this.create_individual(mapped_action_type)
+            triples.append(this.triple(mapped_action_type_uri, "rdf:type", mapped_action_type))
+            triples.append(this.triple(method_uri, "SOMA:isMethodFor", mapped_action_type_uri))
+            # Designaor URI to mapped action type URI
+            this.designator_uri_to_task[designator_uri] = mapped_action_type_uri
+            # TODO: Add more specific properties based on description_content
+            # triples.append(triple(method_uri, "dul:describes", TODO))
 
-    # Add description content as data properties
-    structured_text_uri = create_individual("SOMA:Structured_Text")
-    triples.append(triple(structured_text_uri, "rdf:type", "SOMA:Structured_Text"))
+        elif designator_type == "Motion":
+            # Create a MotionDescription
+            motion_desc_uri = this.create_individual("SOMA:MotionDescription")
+            triples.append(this.triple(motion_desc_uri, "rdf:type", "SOMA:MotionDescription"))
+            triples.append(this.triple(designator_description_uri, "dul:expresses", motion_desc_uri))
+            # TODO: Add more specific properties based on description_content
+            # triples.append(triple(motion_desc_uri, "dul:describes", TODO))
 
+        elif designator_type == "Location":
+            # Create a Description that describes a PhysicalPlace
+            desc_uri = this.create_individual("dul:Description")
+            triples.append(this.triple(desc_uri, "rdf:type", "dul:Description"))
+            triples.append(this.triple(designator_description_uri, "dul:expresses", desc_uri))
+            # TODO: Add more specific properties based on description_content
+            # triples.append(triple(desc_uri, "dul:describes", TODO))
 
-    # Link the description to its structured text representation
-    triples.append(triple(designator_description_uri, "SOMA:hasTextRepresentation", structured_text_uri))
+        return designator_uri, triples
 
-    return designator_uri, triples
+    def create_designator_resolving(this,
+            input_designator_id: str,
+            output_designator_type: Literal["Object", "Action", "Motion", "Location"],
+            output_description_content: Dict[str, Any],
+            output_referent_content: Dict[str, Any]
+    ) -> Tuple[str, str, List[Triple]]:
+        """
+        Create a designator resolving task with input and output roles,
+        and properly link the output designator's referent to the input designator
 
-def create_designator_resolving(
-        input_designator_uri: str,
-        output_designator_type: Literal["Object", "Action", "Motion", "Location"],
-        output_description_content: Dict[str, Any],
-        output_referent_content: Dict[str, Any]
-) -> Tuple[str, str, List[Triple]]:
-    """
-    Create a designator resolving task with input and output roles,
-    and properly link the output designator's referent to the input designator
+        Args:
+            input_designator_uri: URI of the input designator
+            output_designator_type: Type of the output designator
+            output_description_content: Content for the output designator description
+            output_referent_content: Content for the output designator referent
 
-    Args:
-        input_designator_uri: URI of the input designator
-        output_designator_type: Type of the output designator
-        output_description_content: Content for the output designator description
-        output_referent_content: Content for the output designator referent
+        Returns:
+            Tuple containing the resolving task URI, output designator URI, and list of triples
+        """
+        triples = []
+        
+        # Create the input designator URI
+        input_designator_uri = this.last_designator_id[input_designator_id]
 
-    Returns:
-        Tuple containing the resolving task URI, output designator URI, and list of triples
-    """
-    triples = []
+        # Create the resolving task
+        resolving_uri = this.create_individual("SOMA:Resolving_of_PyCRAM_Designators")
+        triples.append(this.triple(resolving_uri, "rdf:type", "SOMA:Resolving_of_PyCRAM_Designators"))
 
-    # Create the resolving task
-    resolving_uri = create_individual("SOMA:Resolving_of_PyCRAM_Designators")
-    triples.append(triple(resolving_uri, "rdf:type", "SOMA:Resolving_of_PyCRAM_Designators"))
+        # Create input role (premise)
+        premise_uri = this.create_individual("SOMA:Premise")
+        triples.append(this.triple(premise_uri, "rdf:type", "SOMA:Premise"))
+        triples.append(this.triple(premise_uri, "dul:isRoleOf", input_designator_uri))
+        triples.append(this.triple(resolving_uri, "SOMA:isTaskOfInputRole", premise_uri))
 
-    # Create input role (premise)
-    premise_uri = create_individual("SOMA:Premise")
-    triples.append(triple(premise_uri, "rdf:type", "SOMA:Premise"))
-    triples.append(triple(premise_uri, "dul:isRoleOf", input_designator_uri))
-    triples.append(triple(resolving_uri, "SOMA:isTaskOfInputRole", premise_uri))
+        # Create output designator with description and referent
+        output_designator_class = f"SOMA:PyCram{output_designator_type}Designator"
+        output_designator_uri = this.create_individual(output_designator_class)
 
-    # Create output designator with description and referent
-    output_designator_class = f"SOMA:PyCram{output_designator_type}Designator"
-    output_designator_uri = create_individual(output_designator_class)
+        # Add type triple
+        triples.append(this.triple(output_designator_uri, "rdf:type", output_designator_class))
 
-    # Add type triple
-    triples.append(triple(output_designator_uri, "rdf:type", output_designator_class))
+        # Create and link the description for output designator
+        output_description_class = f"SOMA:PyCram{output_designator_type}DesignatorDescription"
+        output_description_uri = this.create_individual(output_description_class)
 
-    # Create and link the description for output designator
-    output_description_class = f"SOMA:PyCram{output_designator_type}DesignatorDescription"
-    output_description_uri = create_individual(output_description_class)
+        # Add type triple for description
+        triples.append(this.triple(output_description_uri, "rdf:type", output_description_class))
 
-    # Add type triple for description
-    triples.append(triple(output_description_uri, "rdf:type", output_description_class))
+        # Link output designator to description
+        triples.append(this.triple(output_designator_uri, "dul:hasProperPart", output_description_uri))
 
-    # Link output designator to description
-    triples.append(triple(output_designator_uri, "dul:hasProperPart", output_description_uri))
+        # Create and link the referent for output designator
+        output_referent_class = f"SOMA:PyCram{output_designator_type}DesignatorReferent"
+        output_referent_uri = this.create_individual(output_referent_class)
 
-    # Create and link the referent for output designator
-    output_referent_class = f"SOMA:PyCram{output_designator_type}DesignatorReferent"
-    output_referent_uri = create_individual(output_referent_class)
+        # Add type triple for referent
+        triples.append(this.triple(output_referent_uri, "rdf:type", output_referent_class))
 
-    # Add type triple for referent
-    triples.append(triple(output_referent_uri, "rdf:type", output_referent_class))
+        # Link output designator to referent
+        triples.append(this.triple(output_designator_uri, "dul:hasProperPart", output_referent_uri))
 
-    # Link output designator to referent
-    triples.append(triple(output_designator_uri, "dul:hasProperPart", output_referent_uri))
+        # Retrieve the input designator description URI
+        input_description_uri = this.designator_uri_to_description[input_designator_uri]
 
-    # TODO Get the description URI of the input designator
-    # This requires retrieving it from the knowledge base, but for now we'll infer it
-    # by adding "_Description" to the base URI, which isn't correct but illustrates the point
-    input_description_uri = input_designator_uri + "_Description"  # Placeholder
+        # Now create the appropriate expression relationships based on designator type
+        if output_designator_type == "Object":
+            # Create a Description that describes a PhysicalArtifact
+            output_desc_uri = this.create_individual("dul:Description")
+            triples.append(this.triple(output_desc_uri, "rdf:type", "dul:Description"))
+            triples.append(this.triple(output_description_uri, "dul:expresses", output_desc_uri))
+            # Store the designator description description URI for later use
+            this.designator_uri_to_description_description[output_designator_uri] = output_desc_uri
+            # TODO: Add more specific properties based on output_description_content
+            # triples.append(triple(referent_desc_uri, "dul:describes", TODO))
 
-    # Now create the appropriate expression relationships based on designator type
-    if output_designator_type == "Object":
-        # Create a Description that describes a PhysicalArtifact
-        output_desc_uri = create_individual("dul:Description")
-        triples.append(triple(output_desc_uri, "rdf:type", "dul:Description"))
-        triples.append(triple(output_description_uri, "dul:expresses", output_desc_uri))
-        # TODO: Add more specific properties based on output_description_content
-        # triples.append(triple(referent_desc_uri, "dul:describes", TODO))
+        elif output_designator_type == "Action":            
+            # Create a Method
+            plan_uri = this.create_individual("dul:Plan")
+            triples.append(this.triple(plan_uri, "rdf:type", "dul:Plan"))
+            triples.append(this.triple(output_description_uri, "dul:expresses", plan_uri))
+            
+            # Store the designator description description URI for later use
+            this.designator_uri_to_description_description[output_designator_uri] = plan_uri
+            # From the description content, we extract the type of action
+            action_type = output_description_content.get("type")
+            # Map the action type to SOMA
+            mapped_action_type = this.map_action_type_from_cram_to_soma(action_type)
+            # Create individual for the mapped action type
+            mapped_action_type_uri = this.create_individual(mapped_action_type)
+            triples.append(this.triple(mapped_action_type_uri, "rdf:type", mapped_action_type))
+            triples.append(this.triple(plan_uri, "SOMA:isPlanFor", mapped_action_type_uri))
+            # Designator URI to mapped action type URI
+            this.designator_uri_to_task[output_designator_uri] = mapped_action_type_uri
 
-        # Create a Description that expands the input description
-        referent_desc_uri = create_individual("dul:Description")
-        triples.append(triple(referent_desc_uri, "rdf:type", "dul:Description"))
-        triples.append(triple(output_referent_uri, "dul:expresses", referent_desc_uri))
-        # TODO: Add more specific properties based on referent_description_content
-        # triples.append(triple(referent_desc_uri, "dul:describes", TODO))
+            # Create a Plan that expands the Method
+            plan_uri = this.create_individual("dul:Plan")
+            triples.append(this.triple(plan_uri, "rdf:type", "dul:Plan"))
+            triples.append(this.triple(output_referent_uri, "dul:expresses", plan_uri))
+            
+        elif output_designator_type == "Motion":
+            # Create a MotionDescription
+            motion_desc_uri = this.create_individual("SOMA:MotionDescription")
+            triples.append(this.triple(motion_desc_uri, "rdf:type", "SOMA:MotionDescription"))
+            triples.append(this.triple(output_description_uri, "dul:expresses", motion_desc_uri))
+            triples.append(this.triple(output_designator_uri, "dul:expresses", motion_desc_uri))
+
+            # Create a MotionDescription that expands the input MotionDescription
+            referent_motion_desc_uri = this.create_individual("SOMA:MotionDescription")
+            triples.append(this.triple(referent_motion_desc_uri, "rdf:type", "SOMA:MotionDescription"))
+            triples.append(this.triple(output_referent_uri, "dul:expresses", referent_motion_desc_uri))
+
+        elif output_designator_type == "Location":
+            # Create a Description that describes a PhysicalPlace
+            output_desc_uri = this.create_individual("dul:Description")
+            triples.append(this.triple(output_desc_uri, "rdf:type", "dul:Description"))
+            triples.append(this.triple(output_description_uri, "dul:expresses", output_desc_uri))
+            triples.append(this.triple(output_desc_uri, "dul:describes", "dul:PhysicalPlace"))
+
+            # Create a Description that expands the input description
+            referent_desc_uri = this.create_individual("dul:Description")
+            triples.append(this.triple(referent_desc_uri, "rdf:type", "dul:Description"))
+            triples.append(this.triple(output_referent_uri, "dul:expresses", referent_desc_uri))
+            triples.append(this.triple(referent_desc_uri, "dul:describes", "dul:PhysicalPlace"))
 
         # Add expands relationship
-        input_expr_uri = create_individual("dul:Description") # TODO get actual URI instead of creating new one
-        triples.append(triple(input_expr_uri, "rdf:type", "dul:Description"))
-        triples.append(triple(input_expr_uri, "dul:isExpressedBy", input_description_uri))
-        triples.append(triple(referent_desc_uri, "dul:expands", input_expr_uri))
+        triples.append(this.triple(referent_desc_uri, "dul:expands", output_desc_uri))
+        # Get designator description description URI
+        input_desc_desc_uri = this.designator_uri_to_description_description[input_description_uri]
+        triples.append(this.triple(referent_desc_uri, "dul:expands", input_desc_desc_uri))
+        # TODO: If there are multiple resolving tasks, each referent description expands the previous referent description (also for the other designator types)
 
-    elif output_designator_type == "Action":
-        # Create a Method
-        method_uri = create_individual("dul:Method")
-        triples.append(triple(method_uri, "rdf:type", "dul:Method"))
-        triples.append(triple(output_description_uri, "dul:expresses", method_uri))
+        # Add directlyDerivedFrom relationships
+        triples.append(this.triple(output_designator_uri, "SOMA:directlyDerivedFrom", input_designator_uri))
+        triples.append(this.triple(output_description_uri, "SOMA:directlyDerivedFrom", input_description_uri))
 
-        # Create a Plan that expands the Method
-        plan_uri = create_individual("dul:Plan")
-        triples.append(triple(plan_uri, "rdf:type", "dul:Plan"))
-        triples.append(triple(output_referent_uri, "dul:expresses", plan_uri))
+        # Create output role (conclusion)
+        conclusion_uri = this.create_individual("SOMA:Conclusion")
+        triples.append(this.triple(conclusion_uri, "rdf:type", "SOMA:Conclusion"))
+        triples.append(this.triple(conclusion_uri, "dul:isRoleOf", output_designator_uri))
+        triples.append(this.triple(resolving_uri, "SOMA:isTaskOfOutputRole", conclusion_uri))
 
-        # Add expands relationship
-        input_method_uri = create_individual("dul:Method") # TODO get actual URI instead of creating new one
-        triples.append(triple(input_method_uri, "rdf:type", "dul:Method"))
-        triples.append(triple(input_method_uri, "dul:isExpressedBy", input_description_uri))
-        triples.append(triple(plan_uri, "dul:expands", input_method_uri))
-
-    elif output_designator_type == "Motion":
-        # Create a MotionDescription
-        motion_desc_uri = create_individual("SOMA:MotionDescription")
-        triples.append(triple(motion_desc_uri, "rdf:type", "SOMA:MotionDescription"))
-        triples.append(triple(output_description_uri, "dul:expresses", motion_desc_uri))
-        triples.append(triple(output_designator_uri, "dul:expresses", motion_desc_uri))
-
-        # Create a MotionDescription that expands the input MotionDescription
-        referent_motion_desc_uri = create_individual("SOMA:MotionDescription")
-        triples.append(triple(referent_motion_desc_uri, "rdf:type", "SOMA:MotionDescription"))
-        triples.append(triple(output_referent_uri, "dul:expresses", referent_motion_desc_uri))
-
-        # Add expands relationship
-        input_motion_desc_uri = create_individual("SOMA:MotionDescription") # TODO get actual URI instead of creating new one
-        triples.append(triple(input_motion_desc_uri, "rdf:type", "SOMA:MotionDescription"))
-        triples.append(triple(input_motion_desc_uri, "dul:isExpressedBy", input_description_uri))
-        triples.append(triple(referent_motion_desc_uri, "dul:expands", input_motion_desc_uri))
-
-    elif output_designator_type == "Location":
-        # Create a Description that describes a PhysicalPlace
-        output_desc_uri = create_individual("dul:Description")
-        triples.append(triple(output_desc_uri, "rdf:type", "dul:Description"))
-        triples.append(triple(output_description_uri, "dul:expresses", output_desc_uri))
-        triples.append(triple(output_desc_uri, "dul:describes", "dul:PhysicalPlace"))
-
-        # Create a Description that expands the input description
-        referent_desc_uri = create_individual("dul:Description")
-        triples.append(triple(referent_desc_uri, "rdf:type", "dul:Description"))
-        triples.append(triple(output_referent_uri, "dul:expresses", referent_desc_uri))
-        triples.append(triple(referent_desc_uri, "dul:describes", "dul:PhysicalPlace"))
-
-        # Add expands relationship
-        input_expr_uri = create_individual("dul:Description") # TODO get actual URI instead of creating new one
-        triples.append(triple(input_expr_uri, "rdf:type", "dul:Description"))
-        triples.append(triple(input_expr_uri, "dul:isExpressedBy", input_description_uri))
-        triples.append(triple(referent_desc_uri, "dul:expands", input_expr_uri))
-
-    # Add structured text for output description and referent
-    output_desc_text_uri = create_individual("SOMA:Structured_Text")
-    triples.append(triple(output_desc_text_uri, "rdf:type", "SOMA:Structured_Text"))
-
-    output_ref_text_uri = create_individual("SOMA:Structured_Text")
-    triples.append(triple(output_ref_text_uri, "rdf:type", "SOMA:Structured_Text"))
-
-    # Add directlyDerivedFrom relationships
-    triples.append(triple(output_designator_uri, "SOMA:directlyDerivedFrom", input_designator_uri))
-    triples.append(triple(output_description_uri, "SOMA:directlyDerivedFrom", input_description_uri))
-
-    # Create output role (conclusion)
-    conclusion_uri = create_individual("SOMA:Conclusion")
-    triples.append(triple(conclusion_uri, "rdf:type", "SOMA:Conclusion"))
-    triples.append(triple(conclusion_uri, "dul:isRoleOf", output_designator_uri))
-    triples.append(triple(resolving_uri, "SOMA:isTaskOfOutputRole", conclusion_uri))
-
-    return resolving_uri, output_designator_uri, triples
+        return resolving_uri, output_designator_uri, triples
 
 
 # Example usage:
 if __name__ == "__main__":
+    # Initialize the DesignatorParser
+    parser = DesignatorParser()
     # Example 1: Create an unresolved object designator
     obj_desc = {
         "type": "cup",
         "color": "blue",
         "location": "on table"
     }
-    obj_designator_uri, obj_triples = create_unresolved_designator("Object", obj_desc)
+    obj_designator_uri, obj_triples = parser.create_unresolved_designator("Object", obj_desc)
     print(f"Created unresolved object designator: {obj_designator_uri}")
     print(f"Generated {len(obj_triples)} triples")
 
@@ -320,7 +357,7 @@ if __name__ == "__main__":
         "orientation": [0, 0, 1, 0]
     }
 
-    resolving_uri, resolved_designator_uri, resolving_triples = create_designator_resolving(
+    resolving_uri, resolved_designator_uri, resolving_triples = parser.create_designator_resolving(
         obj_designator_uri, "Object", resolved_desc, resolved_ref
     )
 

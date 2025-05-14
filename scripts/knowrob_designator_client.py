@@ -37,11 +37,16 @@ def main():
     push_msg.json_designator = """
     {
       "anObject": {
+        "name": "Milk1",
         "type": "Milk",
         "pose": {
-          "x": 1.0, 
-          "y": 0.5,
-          "z": 0.75,
+          "px": 1.0,
+          "py": 1.0,
+          "pz": 0.0,
+          "rx": 0.0,
+          "ry": 0.0,
+          "rz": 0.0,
+          "rw": 1.0,
           "frame": "map"
         }
       }
@@ -84,12 +89,15 @@ def main():
             "type": "Milk"
           }
         },
-        "target": {
-          "pose": {
-            "x": 1.2,
-            "y": 0.8,
-            "z": 0.75,
-            "frame": "map"
+        "target_location": {
+          'px': 2.1, 
+          'py': 2.35, 
+          'pz': 0.8, 
+          'rx': 0.0, 
+          'ry': 0.0, 
+          'rz': 0.0, 
+          'rw': 1.0, 
+          'frame': 'map'
           }
         }
       }
