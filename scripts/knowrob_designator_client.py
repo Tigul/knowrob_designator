@@ -14,6 +14,17 @@ from knowrob_designator.msg import (
     DesignatorExecutionStart,
     DesignatorExecutionFinished
 )
+from knowrob_ros.knowrob_ros_lib import KnowRobRosLib
+from knowrob_ros.knowrob_ros_lib import get_default_modalframe
+
+def testQueryDesig():
+    know = KnowRobRosLib()
+    know.init_clients()  # After rospy.init_node()
+    
+    query = "triple(?d, rdf:type, soma:PyCramDesignator)"
+    rospy.loginfo(f"asking [{query}] ...")
+    result = know.ask_one(query, get_default_modalframe())
+    rospy.loginfo(f"response: [{result}]")
 
 def main():
     rospy.init_node('knowrob_designator_topic_client')
@@ -145,6 +156,9 @@ def main():
     exec_finished_msg.json_designator = resolved_designator
     rospy.loginfo("Publishing DesignatorExecutionFinished...")
     exec_finished_pub.publish(exec_finished_msg)
+    
+    # Finally do some testing queries with KnowRob
+    testQueryDesig()
 
 if __name__ == '__main__':
     main()
