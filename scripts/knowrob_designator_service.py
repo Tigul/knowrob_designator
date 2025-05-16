@@ -64,11 +64,22 @@ class DesignatorLoggerNode:
         # Translate triples to knowrob triples
         builder = TripleQueryBuilder()
         for s, p, o in triples:
+            # Remove leading < or trailing > if present
+            s = s[1:] if s.startswith("<") else s
+            s = s[:-1] if s.endswith(">") else s
+
+            p = p[1:] if p.startswith("<") else p
+            p = p[:-1] if p.endswith(">") else p
+
+            o = o[1:] if o.startswith("<") else o
+            o = o[:-1] if o.endswith(">") else o
+
+            # Add the triple to the builder
             builder.add(s, p, o)
         # Set the modal frame
         modal_frame = get_default_modalframe()
-        modal_frame.minPastTimestamp = msg.stamp.to_sec()
-        modal_frame.confidence = 1.0
+        # modal_frame.minPastTimestamp = msg.stamp.to_sec()
+        # modal_frame.confidence = 1.0
         # Add the designator to knowrob
         self.knowrob.tell(builder.get_triples(), modal_frame)
         rospy.loginfo(f"Sent {len(triples)} unresolved Action designator triples for {designator_id}")
@@ -102,9 +113,10 @@ class DesignatorLoggerNode:
             builder.add(s, p, o)
         # Set the modal frame
         modal_frame = get_default_modalframe()
-        modal_frame.minPastTimestamp = msg.stamp.to_sec()
-        modal_frame.confidence = 1.0
+        # modal_frame.minPastTimestamp = msg.stamp.to_sec()
+        # modal_frame.confidence = 1.0
         # Add the designator to knowrob
+        self.knowrob.tell(builder.get_triples(), modal_frame)
         rospy.loginfo(f"Sent {len(triples)} resolving triples for Action task {resolving_uri}")
         if print_triples:
             to_print = ""
@@ -130,8 +142,8 @@ class DesignatorLoggerNode:
             builder.add(s, p, o)
         # Set the modal frame
         modal_frame = get_default_modalframe()
-        modal_frame.minPastTimestamp = msg.stamp.to_sec()
-        modal_frame.confidence = 1.0
+        # modal_frame.minPastTimestamp = msg.stamp.to_sec()
+        # modal_frame.confidence = 1.0
         # Add the designator to knowrob
         self.knowrob.tell(builder.get_triples(), modal_frame)
         rospy.loginfo(f"Sent {len(triples)} execution start triples for {msg.designator_id}")

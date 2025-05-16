@@ -21,9 +21,9 @@ def testQueryDesig():
     know = KnowRobRosLib()
     know.init_clients()  # After rospy.init_node()
     
-    query = "triple(?d, rdf:type, soma:PyCramActionDesignator)"
+    query = "triple(?d, 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', 'http://www.ease-crc.org/ont/SOMA.owl#PyCramActionDesignator')"
     rospy.loginfo(f"asking [{query}] ...")
-    result = know.ask_one(query, get_default_modalframe())
+    result = know.ask_all(query, get_default_modalframe())
     rospy.loginfo(f"response: [{result}]")
 
 def main():

@@ -4,10 +4,10 @@ from typing import List, Tuple, Optional, Dict, Any, Literal
 class DesignatorParser:
     # Define the prefixes
     PREFIXES = {
-        "SOMA": "<http://www.ease-crc.org/ont/SOMA.owl#>",
-        "dul": "<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#>",
-        "rdf": "<http://www.w3.org/1999/02/22-rdf-syntax-ns#>",
-        "owl": "<http://www.w3.org/2002/07/owl#>"
+        "SOMA": "<http://www.ease-crc.org/ont/SOMA.owl>",
+        "dul": "<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl>",
+        "rdf": "<http://www.w3.org/1999/02/22-rdf-syntax-ns>",
+        "owl": "<http://www.w3.org/2002/07/owl>"
     }
 
     # Triple type for readability
