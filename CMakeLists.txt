@@ -17,6 +17,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/DesignatorResolutionFinished.msg"
   "msg/DesignatorResolutionStart.msg"
   "msg/PushObjectDesignator.msg"
+
+  "action/DesignatorQueryIncremental.action"
   DEPENDENCIES
     std_msgs
     geometry_msgs
