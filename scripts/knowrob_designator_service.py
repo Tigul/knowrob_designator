@@ -82,11 +82,11 @@ class DesignatorLoggerNode:
         modal_frame = get_default_modalframe()
         modal_frame.confidence = 1.0
         # Add the designator to knowrob
-        self.knowrob.tell(builder.get_triples(), modal_frame)
-        rospy.loginfo(f"Sent {len(triples)} triples for PushObjectDesignator: {msg.designator_id}")
+        # self.knowrob.tell(builder.get_triples(), modal_frame)
+        rospy.loginfo(f"Sent {len(triples)} triples for PushObjectDesignator")
         if print_triples:
             to_print = ""
-            to_print += f"Triples for PushObjectDesignator {msg.designator_id}:\n"
+            to_print += f"Triples for PushObjectDesignator:\n"
             for s, p, o in triples:
                 to_print += f"{s} {p} {o}\n"
             rospy.loginfo(to_print)
