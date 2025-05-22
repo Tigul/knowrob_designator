@@ -1,0 +1,9 @@
+string query_type           # "check" or "entityvar"
+string query_id             # Unique identifier for the query if not empty bound designator_json is ignored
+string designator_json      # JSON-formatted designator (as string)
+---
+bool success
+string binding_as_json
+string query_id             # Unique identifier for the query
+---
+string status_message

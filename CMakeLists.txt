@@ -6,6 +6,10 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
+  actionlib
+  actionlib_msgs
+  knowrob_ros
+  knowrob
 )
 
 catkin_python_setup()
@@ -22,10 +26,18 @@ add_message_files(
     DesignatorExecutionFinished.msg
 )
 
+## Add action files
+add_action_files(
+  DIRECTORY action
+  FILES
+    DesignatorQueryIncremental.action
+)
+
 ## Generate messages
 generate_messages(
   DEPENDENCIES
   std_msgs
+  actionlib_msgs
 )
 
 ## Declare catkin package

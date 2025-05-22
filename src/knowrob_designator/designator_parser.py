@@ -90,6 +90,35 @@ class DesignatorParser:
             object_ = f"<{object_}>"
 
         return (subject, predicate, object_)
+    
+    def push_object_designator(self,
+            designator_content: Dict[str, Any],
+            time_as_float: float
+    ) -> List[Triple]:
+        """
+        Push an object designator to the knowledge base
+
+        Args:
+            designator_content: The content of the designator
+            time_as_float: The time as a float
+
+        Returns:
+            A list of triples representing the designator
+        """
+        triples = []
+        # Create individual for the object 
+        object_designator_uri = self.create_individual(designator_content["anObject"]["type"])
+        # Create the Object with the hasType the type of the object
+        object_type = designator_content["anObject"]["type"]
+        object_type_uri = self.map_object_type_from_cram_to_soma(object_type)
+        object_type_uri = self.create_individual(object_type_uri)
+        triples.append(self.triple(object_designator_uri, "rdf:type", object_type_uri))
+        # Add the urdf link to the object designator
+        urdf_link = designator_content["anObject"].get("urdf_link")
+        if urdf_link:
+            triples.append(self.triple(object_designator_uri, "SOMA:hasUrdfLink", urdf_link))
+        return triples
+        
 
     def create_unresolved_designator(self,
             designator_type: Literal["Object", "Action", "Motion", "Location"],
