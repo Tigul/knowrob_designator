@@ -6,4 +6,4 @@
 string designator_id
 string resolved_from_id
 string json_designator
-time stamp
+builtin_interfaces/Time stamp

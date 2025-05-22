@@ -1,40 +1,25 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.8)
 project(knowrob_designator)
 
-## Find catkin and required components
-find_package(catkin REQUIRED COMPONENTS
-  rospy
-  std_msgs
-  message_generation
-)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
-catkin_python_setup()
+find_package(ament_cmake REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
-## Declare ROS messages
-add_message_files(
-  DIRECTORY msg
-  FILES
-    PushObjectDesignator.msg
-    DesignatorInit.msg
-    DesignatorResolutionStart.msg
-    DesignatorResolutionFinished.msg
-    DesignatorExecutionStart.msg
-    DesignatorExecutionFinished.msg
-)
-
-## Generate messages
-generate_messages(
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/DesignatorExecutionFinished.msg"
+  "msg/DesignatorExecutionStart.msg"
+  "msg/DesignatorInit.msg"
+  "msg/DesignatorResolutionFinished.msg"
+  "msg/DesignatorResolutionStart.msg"
+  "msg/PushObjectDesignator.msg"
   DEPENDENCIES
-  std_msgs
+    std_msgs
+    geometry_msgs
 )
 
-## Declare catkin package
-catkin_package(
-  CATKIN_DEPENDS rospy std_msgs message_runtime
-)
-
-# list all executable python and shell scripts for installation
-install(PROGRAMS
-   scripts/*
-   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+ament_package()

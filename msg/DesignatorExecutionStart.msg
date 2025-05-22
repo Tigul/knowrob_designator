@@ -4,4 +4,4 @@
 # - `timestamp`: Time of update
 string designator_id
 string json_designator
-time stamp
+builtin_interfaces/Time stamp
